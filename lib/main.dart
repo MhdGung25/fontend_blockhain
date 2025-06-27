@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:frontend_blockhain/screens/login_page.dart';
+import 'package:frontend_blockhain/pages/login_page.dart';
 
 void main() {
   runApp(const MyApp());
