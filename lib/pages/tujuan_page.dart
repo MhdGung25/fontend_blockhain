@@ -52,7 +52,7 @@ class _TujuanPageState extends State<TujuanPage> {
                 ),
               ),
               const SizedBox(height: 24),
-              Image.asset('assets/register_ilustrasi.png', height: 160),
+              Image.asset('assets/register_illustration.png', height: 160),
               const SizedBox(height: 24),
 
               // Daftar Tujuan dengan Ceklis
