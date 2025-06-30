@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:frontend_blockhain/pages/register_page.dart';
 import 'package:frontend_blockhain/pages/umkm_profile_page.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -22,32 +24,52 @@ class _LoginPageState extends State<LoginPage> {
     if (_formKey.currentState!.validate()) {
       setState(() => _isLoading = true);
 
-      await Future.delayed(const Duration(seconds: 1));
+      final url = Uri.parse("http://127.0.0.1:8000/api/login");
 
-      SharedPreferences prefs = await SharedPreferences.getInstance();
-      String? savedEmail = prefs.getString('email');
-      String? savedPassword = prefs.getString('password');
-      String? savedName = prefs.getString('nama_lengkap');
+      try {
+        final response = await http.post(
+          url,
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+          },
+          body: jsonEncode({
+            'email': _emailController.text,
+            'password': _passwordController.text,
+          }),
+        );
 
-      setState(() => _isLoading = false);
+        final data = jsonDecode(response.body);
 
-      if (_emailController.text == savedEmail &&
-          _passwordController.text == savedPassword) {
-        // Simpan nama untuk digunakan di halaman lain jika diperlukan
-        prefs.setString('nama_login', savedName ?? "Pengguna");
+        if (response.statusCode == 200) {
+          final prefs = await SharedPreferences.getInstance();
+          await prefs.setString('token', data['token']);
+          await prefs.setString('nama_login', data['user']['name']);
+          await prefs.setString('email', data['user']['email']);
 
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(const SnackBar(content: Text("Login berhasil")));
+
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (context) => const UmkmProfilePage()),
+          );
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                "Gagal login: ${data['message'] ?? 'Cek kredensial'}",
+              ),
+            ),
+          );
+        }
+      } catch (e) {
         ScaffoldMessenger.of(
           context,
-        ).showSnackBar(const SnackBar(content: Text("Login berhasil")));
-
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (context) => const UmkmProfilePage()),
-        );
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Email atau password salah")),
-        );
+        ).showSnackBar(SnackBar(content: Text("Terjadi kesalahan: $e")));
+      } finally {
+        setState(() => _isLoading = false);
       }
     }
   }
