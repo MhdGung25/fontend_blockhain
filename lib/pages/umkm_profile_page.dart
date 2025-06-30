@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:frontend_blockhain/pages/tujuan_page.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
 
 class UmkmProfilePage extends StatefulWidget {
   const UmkmProfilePage({super.key});
@@ -37,28 +38,44 @@ class _UmkmProfilePageState extends State<UmkmProfilePage> {
     if (_formKey.currentState!.validate()) {
       setState(() => _isLoading = true);
 
-      // Simpan data ke SharedPreferences
-      final prefs = await SharedPreferences.getInstance();
-      prefs.setString('nama_usaha', namaController.text);
-      await prefs.setString('jenis_usaha', selectedJenisUsaha!);
-      await prefs.setString('tahun_berdiri', selectedTahun!);
-      await prefs.setString('alamat', alamatController.text);
+      // Siapkan data
+      final body = {
+        'nama_usaha': namaController.text,
+        'jenis_usaha': selectedJenisUsaha!,
+        'tahun_berdiri': selectedTahun!,
+        'alamat': alamatController.text,
+      };
 
-      // Simulasi loading
-      await Future.delayed(const Duration(seconds: 2));
+      try {
+        final response = await http.post(
+          Uri.parse('http://127.0.0.1:8000/api/usaha'),
+          headers: {'Content-Type': 'application/json'},
+          body: jsonEncode(body),
+        );
+
+        if (response.statusCode == 200) {
+          final data = jsonDecode(response.body);
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text(data['message'])));
+
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (context) => const TujuanPage()),
+          );
+        } else {
+          final error = jsonDecode(response.body);
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(error['message'] ?? 'Gagal simpan profil')),
+          );
+        }
+      } catch (e) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Terjadi kesalahan: $e')));
+      }
 
       setState(() => _isLoading = false);
-
-      // Tampilkan notifikasi berhasil
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Data berhasil disimpan')));
-
-      // Navigasi ke halaman Tujuan
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (context) => const TujuanPage()),
-      );
     }
   }
 

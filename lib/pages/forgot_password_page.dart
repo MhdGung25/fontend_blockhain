@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import 'package:frontend_blockhain/pages/login_page.dart';
 
 class ForgotPasswordPage extends StatefulWidget {
   const ForgotPasswordPage({super.key});
@@ -20,6 +21,7 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
     setState(() => _isLoading = true);
 
     final url = Uri.parse("http://127.0.0.1:8000/api/forgot-password");
+
     try {
       final response = await http.post(
         url,
@@ -34,24 +36,39 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
 
       if (response.statusCode == 200) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Link reset telah dikirim ke email kamu'),
+          SnackBar(
+            content: Text(
+              data['message'] ?? 'Link reset password telah dikirim ke email.',
+            ),
+            backgroundColor: Colors.green,
           ),
         );
         _emailController.clear();
+
+        // Navigasi ke halaman login setelah berhasil
+        Future.delayed(const Duration(seconds: 2), () {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (context) => const LoginPage()),
+          );
+        });
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
-              'Gagal kirim link: ${data["message"] ?? "Terjadi kesalahan"}',
+              data['message'] ?? 'Terjadi kesalahan saat mengirim link reset.',
             ),
+            backgroundColor: Colors.red,
           ),
         );
       }
     } catch (e) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Terjadi kesalahan: $e')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Terjadi kesalahan jaringan: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
     } finally {
       setState(() => _isLoading = false);
     }
@@ -72,7 +89,7 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
           child: Column(
             children: [
               const Text(
-                "Masukkan email akun kamu untuk mereset password",
+                "Masukkan email akun kamu untuk menerima link reset password.",
                 style: TextStyle(fontSize: 16),
               ),
               const SizedBox(height: 20),
@@ -87,7 +104,7 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
                   if (value == null || value.isEmpty) {
                     return 'Email tidak boleh kosong';
                   } else if (!RegExp(
-                    r'^[\w-\.]+@([\w-]+\.)+[\w]{2,4}',
+                    r'^[\w-\.]+@([\w-]+\.)+[\w]{2,4}$',
                   ).hasMatch(value)) {
                     return 'Format email tidak valid';
                   }

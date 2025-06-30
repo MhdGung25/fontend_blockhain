@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'dashboard_page.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
 
 class TujuanPage extends StatefulWidget {
   const TujuanPage({super.key});
@@ -20,16 +22,48 @@ class _TujuanPageState extends State<TujuanPage> {
   List<bool> isCheckedList = [false, false, false, false, false];
   bool _isLoading = false;
 
-  void _handleFinish() async {
+  Future<void> _handleFinish() async {
     setState(() => _isLoading = true);
-    await Future.delayed(const Duration(seconds: 2));
-    setState(() => _isLoading = false);
 
-    // Navigasi ke halaman Dashboard / Beranda
-    Navigator.pushReplacement(
-      context,
-      MaterialPageRoute(builder: (context) => const DashboardPage()),
-    );
+    // Ambil tujuan yang dicentang
+    final selectedTujuan = <String>[];
+    for (int i = 0; i < tujuanList.length; i++) {
+      if (isCheckedList[i]) {
+        selectedTujuan.add(tujuanList[i]);
+      }
+    }
+
+    // Kirim ke backend
+    final url = Uri.parse("http://127.0.0.1:8000/api/tujuan");
+    try {
+      final response = await http.post(
+        url,
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+        body: jsonEncode({'tujuan': selectedTujuan}),
+      );
+
+      if (response.statusCode == 200) {
+        // Lanjut ke dashboard jika sukses
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => const DashboardPage()),
+        );
+      } else {
+        final data = jsonDecode(response.body);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Gagal kirim tujuan: ${data["message"]}")),
+        );
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text("Error: $e")));
+    }
+
+    setState(() => _isLoading = false);
   }
 
   @override
