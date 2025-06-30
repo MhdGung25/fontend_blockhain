@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "234762218311",
+    "project_id": "frontend-blockhain",
+    "storage_bucket": "frontend-blockhain.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:234762218311:android:b40517167dca9e93b03a62",
+        "android_client_info": {
+          "package_name": "fontend.blockhain"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBFsqCEFT1OzLpi-8LaHxxZ1cZLFWM6mWM"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

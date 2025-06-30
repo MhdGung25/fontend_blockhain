@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:frontend_blockhain/pages/register_page.dart';
 import 'package:frontend_blockhain/pages/umkm_profile_page.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:frontend_blockhain/pages/forgot_password_page.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 
@@ -154,10 +155,19 @@ class _LoginPageState extends State<LoginPage> {
                         Align(
                           alignment: Alignment.centerRight,
                           child: TextButton(
-                            onPressed: () {},
+                            onPressed: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) =>
+                                      const ForgotPasswordPage(),
+                                ),
+                              );
+                            },
                             child: const Text("Forgot Password?"),
                           ),
                         ),
+
                         const SizedBox(height: 12),
 
                         // Login Button
@@ -214,11 +224,49 @@ class _LoginPageState extends State<LoginPage> {
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                           children: [
-                            Image.asset("assets/icons/google.png", height: 32),
-                            Image.asset("assets/icons/apple.png", height: 32),
-                            Image.asset(
-                              "assets/icons/facebook.png",
-                              height: 32,
+                            GestureDetector(
+                              onTap: () {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text("Login dengan Google diklik"),
+                                  ),
+                                );
+                                // TODO: Tambahkan Google Sign-In logic
+                              },
+                              child: Image.asset(
+                                "assets/icons/google.png",
+                                height: 32,
+                              ),
+                            ),
+                            GestureDetector(
+                              onTap: () {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text("Login dengan Apple diklik"),
+                                  ),
+                                );
+                                // TODO: Tambahkan Apple Sign-In logic
+                              },
+                              child: Image.asset(
+                                "assets/icons/apple.png",
+                                height: 32,
+                              ),
+                            ),
+                            GestureDetector(
+                              onTap: () {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text(
+                                      "Login dengan Facebook diklik",
+                                    ),
+                                  ),
+                                );
+                                // TODO: Tambahkan Facebook Sign-In logic
+                              },
+                              child: Image.asset(
+                                "assets/icons/facebook.png",
+                                height: 32,
+                              ),
                             ),
                           ],
                         ),
