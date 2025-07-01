@@ -12,13 +12,10 @@ class UmkmProfilePage extends StatefulWidget {
 
 class _UmkmProfilePageState extends State<UmkmProfilePage> {
   final _formKey = GlobalKey<FormState>();
-
   final namaController = TextEditingController();
   final alamatController = TextEditingController();
-
   String? selectedJenisUsaha;
   String? selectedTahun;
-
   bool _isLoading = false;
 
   final List<String> jenisUsahaOptions = [
@@ -35,48 +32,74 @@ class _UmkmProfilePageState extends State<UmkmProfilePage> {
   );
 
   void _handleSubmit() async {
-    if (_formKey.currentState!.validate()) {
-      setState(() => _isLoading = true);
+    if (!_formKey.currentState!.validate()) return;
 
-      // Siapkan data
-      final body = {
-        'nama_usaha': namaController.text,
-        'jenis_usaha': selectedJenisUsaha!,
-        'tahun_berdiri': selectedTahun!,
-        'alamat': alamatController.text,
-      };
+    setState(() => _isLoading = true);
 
-      try {
-        final response = await http.post(
-          Uri.parse('http://127.0.0.1:8000/api/usaha'),
-          headers: {'Content-Type': 'application/json'},
-          body: jsonEncode(body),
+    final data = {
+      'nama_usaha': namaController.text,
+      'jenis_usaha': selectedJenisUsaha,
+      'tahun_berdiri': selectedTahun,
+      'alamat': alamatController.text,
+    };
+
+    try {
+      final response = await http.post(
+        Uri.parse('http://127.0.0.1:8000/api/usaha'),
+        headers: {'Content-Type': 'application/json'},
+        body: json.encode(data),
+      );
+
+      final responseData = json.decode(response.body);
+
+      if (response.statusCode == 200) {
+        // Notifikasi berhasil
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Data UMKM berhasil disimpan')),
         );
 
-        if (response.statusCode == 200) {
-          final data = jsonDecode(response.body);
-          ScaffoldMessenger.of(
-            context,
-          ).showSnackBar(SnackBar(content: Text(data['message'])));
-
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(builder: (context) => const TujuanPage()),
-          );
-        } else {
-          final error = jsonDecode(response.body);
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(error['message'] ?? 'Gagal simpan profil')),
-          );
-        }
-      } catch (e) {
-        ScaffoldMessenger.of(
+        // Navigasi ke halaman tujuan sambil kirim data UMKM
+        Navigator.pushReplacement(
           context,
-        ).showSnackBar(SnackBar(content: Text('Terjadi kesalahan: $e')));
+          MaterialPageRoute(
+            builder: (context) => TujuanPage(umkmData: responseData),
+          ),
+        );
+      } else {
+        // Gagal simpan
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Gagal menyimpan: ${responseData["message"] ?? "Terjadi kesalahan"}',
+            ),
+          ),
+        );
       }
-
+    } catch (e) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Terjadi kesalahan: $e')));
+    } finally {
       setState(() => _isLoading = false);
     }
+  }
+
+  InputDecoration _inputDecoration(String label) {
+    return InputDecoration(
+      labelText: label,
+      labelStyle: const TextStyle(color: Colors.white),
+      filled: true,
+      fillColor: const Color(0xFF0A2B6C),
+      border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(10),
+        borderSide: const BorderSide(color: Colors.white70),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(10),
+        borderSide: const BorderSide(color: Colors.white),
+      ),
+    );
   }
 
   @override
@@ -120,29 +143,21 @@ class _UmkmProfilePageState extends State<UmkmProfilePage> {
                       value: selectedJenisUsaha,
                       decoration: _inputDecoration("Jenis Usaha"),
                       dropdownColor: const Color(0xFF0A2B6C),
-                      style: const TextStyle(
-                        color: Colors.white,
-                      ), // warna teks saat dipilih
+                      style: const TextStyle(color: Colors.white),
                       items: jenisUsahaOptions.map((jenis) {
                         return DropdownMenuItem(
                           value: jenis,
                           child: Text(
                             jenis,
-                            style: const TextStyle(
-                              color: Colors.white,
-                            ), // teks di dropdown list
+                            style: const TextStyle(color: Colors.white),
                           ),
                         );
                       }).toList(),
-                      onChanged: (value) {
-                        setState(() {
-                          selectedJenisUsaha = value;
-                        });
-                      },
+                      onChanged: (value) =>
+                          setState(() => selectedJenisUsaha = value),
                       validator: (value) =>
                           value == null ? 'Pilih jenis usaha' : null,
                     ),
-
                     const SizedBox(height: 16),
 
                     // Tahun Berdiri
@@ -160,15 +175,11 @@ class _UmkmProfilePageState extends State<UmkmProfilePage> {
                           ),
                         );
                       }).toList(),
-                      onChanged: (value) {
-                        setState(() {
-                          selectedTahun = value;
-                        });
-                      },
+                      onChanged: (value) =>
+                          setState(() => selectedTahun = value),
                       validator: (value) =>
                           value == null ? 'Pilih tahun' : null,
                     ),
-
                     const SizedBox(height: 16),
 
                     // Alamat
@@ -181,7 +192,7 @@ class _UmkmProfilePageState extends State<UmkmProfilePage> {
                     ),
                     const SizedBox(height: 24),
 
-                    // Tombol Lanjut
+                    // Tombol
                     SizedBox(
                       width: double.infinity,
                       height: 50,
@@ -214,24 +225,6 @@ class _UmkmProfilePageState extends State<UmkmProfilePage> {
             ),
           ),
         ),
-      ),
-    );
-  }
-
-  InputDecoration _inputDecoration(String label) {
-    return InputDecoration(
-      labelText: label,
-      labelStyle: const TextStyle(color: Colors.white),
-      filled: true,
-      fillColor: const Color(0xFF0A2B6C),
-      border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-      enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(10),
-        borderSide: const BorderSide(color: Colors.white70),
-      ),
-      focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(10),
-        borderSide: const BorderSide(color: Colors.white),
       ),
     );
   }

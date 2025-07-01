@@ -4,7 +4,9 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 
 class TujuanPage extends StatefulWidget {
-  const TujuanPage({super.key});
+  final Map<String, dynamic> umkmData;
+
+  const TujuanPage({super.key, required this.umkmData});
 
   @override
   State<TujuanPage> createState() => _TujuanPageState();
@@ -23,9 +25,15 @@ class _TujuanPageState extends State<TujuanPage> {
   bool _isLoading = false;
 
   Future<void> _handleFinish() async {
+    if (!isCheckedList.contains(true)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Pilih minimal satu tujuan')),
+      );
+      return;
+    }
+
     setState(() => _isLoading = true);
 
-    // Ambil tujuan yang dicentang
     final selectedTujuan = <String>[];
     for (int i = 0; i < tujuanList.length; i++) {
       if (isCheckedList[i]) {
@@ -33,8 +41,8 @@ class _TujuanPageState extends State<TujuanPage> {
       }
     }
 
-    // Kirim ke backend
     final url = Uri.parse("http://127.0.0.1:8000/api/tujuan");
+
     try {
       final response = await http.post(
         url,
@@ -42,11 +50,18 @@ class _TujuanPageState extends State<TujuanPage> {
           'Content-Type': 'application/json',
           'Accept': 'application/json',
         },
-        body: jsonEncode({'tujuan': selectedTujuan}),
+        body: jsonEncode({
+          'umkm_id': widget.umkmData['id'],
+          'tujuan': selectedTujuan,
+        }),
       );
 
       if (response.statusCode == 200) {
-        // Lanjut ke dashboard jika sukses
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Tujuan berhasil disimpan')),
+        );
+
+        // Navigasi ke Dashboard setelah sukses
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(builder: (context) => const DashboardPage()),
@@ -77,7 +92,7 @@ class _TujuanPageState extends State<TujuanPage> {
             children: [
               const SizedBox(height: 24),
               const Text(
-                'Apa yang Ingin Anda Capai dengan Aplikasi Ini ?',
+                'Apa yang Ingin Anda Capai dengan Aplikasi Ini?',
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   fontSize: 22,
