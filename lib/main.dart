@@ -1,27 +1,37 @@
 import 'package:flutter/material.dart';
-import 'package:frontend_blockhain/routes/app_routes.dart';
+import 'package:frontend_blockhain/pages/routes/app_routes.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
-void main() {
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  runApp(const MyApp());
+  final prefs = await SharedPreferences.getInstance();
+  final token = prefs.getString('token');
+
+  runApp(
+    UMKMApp(
+      initialRoute: token != null ? AppRoutes.dashboard : AppRoutes.login,
+    ),
+  );
 }
 
-class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+class UMKMApp extends StatelessWidget {
+  final String initialRoute;
+
+  const UMKMApp({super.key, required this.initialRoute});
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Catatan UMKM',
+      title: 'UMKM Blockchain',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         fontFamily: 'Poppins',
-        scaffoldBackgroundColor: const Color(0xFF0B3D91),
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.amber),
+        scaffoldBackgroundColor: const Color(0xFF0E2F56),
+        colorScheme: ColorScheme.fromSeed(seedColor: Colors.orange),
         useMaterial3: true,
       ),
-      initialRoute: AppRoutes.login,
-      routes: AppRoutes.routes,
+      initialRoute: initialRoute,
+      onGenerateRoute: AppRoutes.generateRoute,
     );
   }
 }
