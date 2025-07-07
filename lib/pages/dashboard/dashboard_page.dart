@@ -5,6 +5,7 @@ import 'package:frontend_blockhain/pages/services/api_service.dart';
 import 'package:frontend_blockhain/pages/utils/helpers.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:frontend_blockhain/pages/services/blockchain_service.dart';
 
 class DashboardPage extends StatefulWidget {
   const DashboardPage({super.key});
@@ -29,8 +30,14 @@ class _DashboardPageState extends State<DashboardPage> {
 
   bool isLoadingKeuangan = true;
 
+  // Untuk riwayat blockchain
+  List<Map<String, dynamic>> hashHistory = [];
+  bool isLoadingHash = true;
+
   final Color primaryColor = const Color(0xFF0E2F56);
   final Color accentColor = Colors.orange;
+
+  final BlockchainService _blockchainService = BlockchainService();
 
   @override
   void initState() {
@@ -38,6 +45,7 @@ class _DashboardPageState extends State<DashboardPage> {
     loadUserData();
     loadKeuanganData();
     fetchUMKMProfile();
+    fetchHashHistory();
   }
 
   Future<void> loadUserData() async {
@@ -93,6 +101,14 @@ class _DashboardPageState extends State<DashboardPage> {
     } catch (e) {
       print("❌ Error ambil profil UMKM: $e");
     }
+  }
+
+  Future<void> fetchHashHistory() async {
+    final data = await _blockchainService.getHashHistory();
+    setState(() {
+      hashHistory = data;
+      isLoadingHash = false;
+    });
   }
 
   Future<void> handleLogout(BuildContext context) async {
@@ -189,6 +205,8 @@ class _DashboardPageState extends State<DashboardPage> {
             _buildProfilUMKMCard(),
             const SizedBox(height: 16),
             _buildKeuanganCard(),
+            const SizedBox(height: 24),
+            _buildBlockchainHistorySection(),
             const SizedBox(height: 24),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceAround,
@@ -298,6 +316,42 @@ class _DashboardPageState extends State<DashboardPage> {
                 ),
               ],
             ),
+    );
+  }
+
+  Widget _buildBlockchainHistorySection() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          "Riwayat Blockchain Terbaru",
+          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+        ),
+        const SizedBox(height: 8),
+        isLoadingHash
+            ? const Center(child: CircularProgressIndicator())
+            : hashHistory.isEmpty
+            ? const Text("Belum ada transaksi blockchain.")
+            : Column(
+                children: hashHistory.take(3).map((item) {
+                  return Card(
+                    elevation: 2,
+                    margin: const EdgeInsets.symmetric(vertical: 6),
+                    child: ListTile(
+                      title: Text('${item['jenis']} - ${item['jumlah']} ETH'),
+                      subtitle: Text(item['hash']),
+                      trailing: Text(
+                        item['created_at'].toString().substring(0, 10),
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: Colors.grey,
+                        ),
+                      ),
+                    ),
+                  );
+                }).toList(),
+              ),
+      ],
     );
   }
 

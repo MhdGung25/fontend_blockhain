@@ -1,47 +1,85 @@
-import 'package:web3dart/web3dart.dart';
-import 'package:http/http.dart'; // For making HTTP requests
+import 'dart:convert';
+import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
 
 class BlockchainService {
-  final String rpcUrl; // e.g. https://mainnet.infura.io/v3/YOUR-PROJECT-ID
-  final String privateKey; // Your wallet's private key (keep it safe!)
-  late Web3Client _client;
-  late Credentials _credentials;
-  late EthereumAddress _ownAddress;
+  final String baseUrl = "http://127.0.0.1:8000/api";
 
-  BlockchainService({required this.rpcUrl, required this.privateKey}) {
-    _client = Web3Client(rpcUrl, Client());
-    _credentials = EthPrivateKey.fromHex(privateKey);
+  /// Kirim hash transaksi ke Laravel backend
+  Future<bool> sendHashToBackend({
+    required String hash,
+    required String jenis, // 'pemasukan' atau 'pengeluaran'
+    required double jumlah,
+    String? deskripsi,
+  }) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('token');
+
+      if (token == null) {
+        print('🔒 Token tidak ditemukan. Harap login terlebih dahulu.');
+        return false;
+      }
+
+      final response = await http.post(
+        Uri.parse('http://127.0.0.1:8000/api/store-hash'),
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+        body: jsonEncode({
+          'hash': hash,
+          'jenis': jenis,
+          'jumlah': jumlah,
+          'deskripsi': deskripsi ?? '',
+        }),
+      );
+
+      if (response.statusCode == 201) {
+        print('✅ Hash berhasil disimpan!');
+        return true;
+      } else {
+        print('❌ Gagal simpan hash: ${response.statusCode}');
+        print(response.body);
+        return false;
+      }
+    } catch (e) {
+      print('❌ Error saat kirim hash: $e');
+      return false;
+    }
   }
 
-  // Initialize own address from private key
-  Future<EthereumAddress> getOwnAddress() async {
-    _ownAddress = await _credentials.extractAddress();
-    return _ownAddress;
-  }
+  /// Ambil riwayat hash dari Laravel backend
+  Future<List<Map<String, dynamic>>> getHashHistory() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('token');
 
-  // Get Ether balance of your address
-  Future<EtherAmount> getBalance() async {
-    final address = await getOwnAddress();
-    return await _client.getBalance(address);
-  }
+      if (token == null) {
+        print('🔒 Token tidak ditemukan.');
+        return [];
+      }
 
-  // Send Ether transaction (to another address)
-  Future<String> sendTransaction(String toAddress, double amountInEther) async {
-    final receiver = EthereumAddress.fromHex(toAddress);
-    final amount = EtherAmount.fromUnitAndValue(EtherUnit.ether, amountInEther);
+      final response = await http.get(
+        Uri.parse('$baseUrl/hash-history'),
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Accept': 'application/json',
+        },
+      );
 
-    final txHash = await _client.sendTransaction(
-      _credentials,
-      Transaction(to: receiver, value: amount),
-      chainId:
-          null, // set your network chain id here if needed, e.g., 1 for mainnet
-    );
-
-    return txHash; // returns the transaction hash
-  }
-
-  // Dispose client to close http connections
-  void dispose() {
-    _client.dispose();
+      if (response.statusCode == 200) {
+        final json = jsonDecode(response.body);
+        final List data = json['data'];
+        return data.cast<Map<String, dynamic>>();
+      } else {
+        print('❌ Gagal ambil riwayat hash: ${response.statusCode}');
+        print(response.body);
+        return [];
+      }
+    } catch (e) {
+      print('❌ Error saat ambil history: $e');
+      return [];
+    }
   }
 }
