@@ -56,7 +56,15 @@ class _FormTransaksiPageState extends State<FormTransaksiPage> {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text("✅ Transaksi berhasil disimpan")),
         );
-        Navigator.pushReplacementNamed(context, AppRoutes.dashboard);
+
+        /// 🔁 Reload halaman laporan dan history otomatis
+        Future.delayed(const Duration(milliseconds: 500), () {
+          Navigator.pushNamedAndRemoveUntil(
+            context,
+            AppRoutes.dashboard,
+            (route) => false,
+          );
+        });
       } else {
         final msg = data['message'] ?? 'Gagal menyimpan transaksi';
         ScaffoldMessenger.of(

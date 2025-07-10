@@ -29,14 +29,11 @@ class _DashboardPageState extends State<DashboardPage> {
   String alamatUsaha = "-";
 
   bool isLoadingKeuangan = true;
-
-  // Untuk riwayat blockchain
-  List<Map<String, dynamic>> hashHistory = [];
   bool isLoadingHash = true;
+  List<Map<String, dynamic>> hashHistory = [];
 
   final Color primaryColor = const Color(0xFF0E2F56);
   final Color accentColor = Colors.orange;
-
   final BlockchainService _blockchainService = BlockchainService();
 
   @override
@@ -60,6 +57,8 @@ class _DashboardPageState extends State<DashboardPage> {
   Future<void> loadKeuanganData() async {
     try {
       final data = await ApiService.getKeuanganData();
+      print("📦 Data keuangan diterima: $data");
+
       setState(() {
         saldo = (double.tryParse(data['saldo'].toString()) ?? 0).toInt();
         pemasukan = (double.tryParse(data['pemasukan'].toString()) ?? 0)
@@ -68,8 +67,13 @@ class _DashboardPageState extends State<DashboardPage> {
             .toInt();
         isLoadingKeuangan = false;
       });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("✅ Data keuangan berhasil dimuat")),
+      );
     } catch (e) {
       setState(() => isLoadingKeuangan = false);
+      print('❌ Gagal load keuangan: $e');
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('❌ Gagal memuat data keuangan')),
       );
@@ -80,6 +84,8 @@ class _DashboardPageState extends State<DashboardPage> {
     try {
       final prefs = await SharedPreferences.getInstance();
       final token = prefs.getString('token');
+
+      if (token == null) throw Exception("Token tidak ditemukan");
 
       final response = await http.get(
         Uri.parse('http://127.0.0.1:8000/api/profil-umkm'),
@@ -97,6 +103,8 @@ class _DashboardPageState extends State<DashboardPage> {
           tahunBerdiri = data['tahun_berdiri'] ?? '-';
           alamatUsaha = data['alamat'] ?? '-';
         });
+      } else {
+        print("⚠️ Gagal ambil profil UMKM, kode: ${response.statusCode}");
       }
     } catch (e) {
       print("❌ Error ambil profil UMKM: $e");
@@ -104,11 +112,23 @@ class _DashboardPageState extends State<DashboardPage> {
   }
 
   Future<void> fetchHashHistory() async {
-    final data = await _blockchainService.getHashHistory();
-    setState(() {
-      hashHistory = data;
-      isLoadingHash = false;
-    });
+    try {
+      final data = await _blockchainService.getHashHistory();
+      print("📦 Hash blockchain diterima (${data.length} data)");
+      for (var item in data) {
+        print(
+          "• [${item['jenis']}] ${item['deskripsi'] ?? '-'}: ${item['jumlah']}",
+        );
+      }
+
+      setState(() {
+        hashHistory = data;
+        isLoadingHash = false;
+      });
+    } catch (e) {
+      print("❌ Gagal ambil hash blockchain: $e");
+      setState(() => isLoadingHash = false);
+    }
   }
 
   Future<void> handleLogout(BuildContext context) async {
@@ -282,7 +302,6 @@ class _DashboardPageState extends State<DashboardPage> {
                   style: const TextStyle(
                     fontSize: 24,
                     fontWeight: FontWeight.bold,
-                    color: Colors.black87,
                   ),
                 ),
                 const SizedBox(height: 8),

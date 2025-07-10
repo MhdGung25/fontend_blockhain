@@ -5,6 +5,12 @@ import 'package:shared_preferences/shared_preferences.dart';
 class BlockchainService {
   final String baseUrl = "http://127.0.0.1:8000/api";
 
+  /// Ambil token dari SharedPreferences
+  Future<String?> getToken() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString('token');
+  }
+
   /// Kirim hash transaksi ke Laravel backend
   Future<bool> sendHashToBackend({
     required String hash,
@@ -13,8 +19,7 @@ class BlockchainService {
     String? deskripsi,
   }) async {
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final token = prefs.getString('token');
+      final token = await getToken();
 
       if (token == null) {
         print('🔒 Token tidak ditemukan. Harap login terlebih dahulu.');
@@ -22,7 +27,7 @@ class BlockchainService {
       }
 
       final response = await http.post(
-        Uri.parse('http://127.0.0.1:8000/api/store-hash'),
+        Uri.parse('$baseUrl/store-hash'),
         headers: {
           'Authorization': 'Bearer $token',
           'Content-Type': 'application/json',
@@ -52,12 +57,10 @@ class BlockchainService {
   /// Ambil riwayat hash dari Laravel backend
   Future<List<Map<String, dynamic>>> getHashHistory() async {
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final token = prefs.getString('token');
+      final token = await getToken();
 
       if (token == null) {
-        print('🔒 Token tidak ditemukan.');
-        return [];
+        throw Exception('Token tidak ditemukan. Harap login dahulu.');
       }
 
       final response = await http.get(
@@ -70,16 +73,19 @@ class BlockchainService {
 
       if (response.statusCode == 200) {
         final json = jsonDecode(response.body);
-        final List data = json['data'];
-        return data.cast<Map<String, dynamic>>();
+        final List<dynamic> data = json['data'];
+
+        print('📦 Data diterima dari server: $data');
+
+        return data.map((item) => item as Map<String, dynamic>).toList();
       } else {
-        print('❌ Gagal ambil riwayat hash: ${response.statusCode}');
+        print('❌ Gagal mengambil hash history: ${response.statusCode}');
         print(response.body);
-        return [];
+        throw Exception('Gagal mendapatkan hash history');
       }
     } catch (e) {
-      print('❌ Error saat ambil history: $e');
-      return [];
+      print('❌ Error: $e');
+      rethrow;
     }
   }
 }

@@ -30,6 +30,10 @@ class _LaporanKeuanganPageState extends State<LaporanKeuanganPage> {
       final prefs = await SharedPreferences.getInstance();
       final token = prefs.getString('token');
 
+      if (token == null) {
+        throw Exception("Token tidak ditemukan.");
+      }
+
       final response = await http.get(
         Uri.parse('http://127.0.0.1:8000/api/keuangan'),
         headers: {
@@ -37,6 +41,10 @@ class _LaporanKeuanganPageState extends State<LaporanKeuanganPage> {
           'Accept': 'application/json',
         },
       );
+
+      if (response.statusCode != 200) {
+        throw Exception("Status: ${response.statusCode}");
+      }
 
       final data = jsonDecode(response.body);
 
@@ -50,6 +58,7 @@ class _LaporanKeuanganPageState extends State<LaporanKeuanganPage> {
       });
     } catch (e) {
       print("❌ Gagal ambil laporan: $e");
+      if (!mounted) return;
       setState(() => isLoading = false);
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text("Gagal memuat data keuangan")),
@@ -74,72 +83,104 @@ class _LaporanKeuanganPageState extends State<LaporanKeuanganPage> {
           ? const Center(child: CircularProgressIndicator(color: Colors.orange))
           : Padding(
               padding: const EdgeInsets.all(24),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _buildStatItem(
-                    "Pemasukan",
-                    formatRupiah(pemasukan),
-                    Colors.green,
-                  ),
-                  const SizedBox(height: 16),
-                  _buildStatItem(
-                    "Pengeluaran",
-                    formatRupiah(pengeluaran),
-                    Colors.red,
-                  ),
-                  const SizedBox(height: 32),
-                  const Text(
-                    "Grafik & Analisis Keuangan",
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.w600,
-                      fontSize: 16,
+              child: SingleChildScrollView(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _buildStatItem(
+                      "Pemasukan",
+                      formatRupiah(pemasukan),
+                      Colors.green,
                     ),
-                  ),
-                  const SizedBox(height: 16),
-                  Container(
-                    height: 200,
-                    width: double.infinity,
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(12),
+                    const SizedBox(height: 16),
+                    _buildStatItem(
+                      "Pengeluaran",
+                      formatRupiah(pengeluaran),
+                      Colors.red,
                     ),
-                    child: history.isEmpty
-                        ? const Center(child: Text("Data belum tersedia"))
-                        : BarChart(
-                            BarChartData(
-                              titlesData: FlTitlesData(show: false),
-                              borderData: FlBorderData(show: false),
-                              barGroups: history.asMap().entries.map((entry) {
-                                final index = entry.key;
-                                final item = entry.value;
-                                final jumlah =
-                                    double.tryParse(
-                                      item['jumlah'].toString(),
-                                    ) ??
-                                    0;
-                                final isPemasukan =
-                                    item['jenis'] == 'pemasukan';
-
-                                return BarChartGroupData(
-                                  x: index,
-                                  barRods: [
-                                    BarChartRodData(
-                                      toY: jumlah,
-                                      color: isPemasukan
-                                          ? Colors.green
-                                          : Colors.red,
-                                      width: 14,
+                    const SizedBox(height: 32),
+                    const Text(
+                      "Grafik & Analisis Keuangan",
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w600,
+                        fontSize: 16,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    Container(
+                      height: 200,
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: history.isEmpty
+                          ? const Center(child: Text("Data belum tersedia"))
+                          : BarChart(
+                              BarChartData(
+                                borderData: FlBorderData(show: false),
+                                titlesData: FlTitlesData(
+                                  bottomTitles: AxisTitles(
+                                    sideTitles: SideTitles(
+                                      showTitles: true,
+                                      getTitlesWidget: (value, meta) {
+                                        if (value.toInt() < history.length) {
+                                          final label =
+                                              history[value.toInt()]['jenis'] ??
+                                              '';
+                                          return Text(
+                                            label.toString()[0].toUpperCase(),
+                                            style: const TextStyle(
+                                              fontSize: 10,
+                                            ),
+                                          );
+                                        }
+                                        return const Text('');
+                                      },
                                     ),
-                                  ],
-                                );
-                              }).toList(),
+                                  ),
+                                  leftTitles: AxisTitles(
+                                    sideTitles: SideTitles(showTitles: false),
+                                  ),
+                                  topTitles: AxisTitles(
+                                    sideTitles: SideTitles(showTitles: false),
+                                  ),
+                                  rightTitles: AxisTitles(
+                                    sideTitles: SideTitles(showTitles: false),
+                                  ),
+                                ),
+                                barGroups: history.asMap().entries.map((entry) {
+                                  final index = entry.key;
+                                  final item = entry.value;
+                                  final jumlah =
+                                      double.tryParse(
+                                        item['jumlah'].toString(),
+                                      ) ??
+                                      0;
+                                  final isPemasukan =
+                                      item['jenis'] == 'pemasukan';
+
+                                  return BarChartGroupData(
+                                    x: index,
+                                    barRods: [
+                                      BarChartRodData(
+                                        toY: jumlah,
+                                        color: isPemasukan
+                                            ? Colors.green
+                                            : Colors.red,
+                                        width: 14,
+                                        borderRadius: BorderRadius.circular(4),
+                                      ),
+                                    ],
+                                  );
+                                }).toList(),
+                              ),
                             ),
-                          ),
-                  ),
-                ],
+                    ),
+                  ],
+                ),
               ),
             ),
     );

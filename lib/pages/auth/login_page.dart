@@ -61,13 +61,15 @@ class _LoginPageState extends State<LoginPage> {
 
     try {
       final response = await http.post(
-        Uri.parse('http://127.0.0.1:8000/api/login'),
+        Uri.parse(
+          'http://127.0.0.1:8000/api/login',
+        ), // GANTI 127.0.0.1 JIKA DI EMULATOR
         headers: {'Accept': 'application/json'},
         body: {'email': email, 'password': password},
       );
 
-      setState(() => isLoading = false);
       final data = json.decode(response.body);
+      setState(() => isLoading = false);
 
       if (response.statusCode == 200 && data['token'] != null) {
         final prefs = await SharedPreferences.getInstance();
@@ -89,12 +91,13 @@ class _LoginPageState extends State<LoginPage> {
         }
 
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('✅ Login berhasil, selamat datang!')),
+          const SnackBar(content: Text("✅ Login berhasil, selamat datang!")),
         );
 
         Navigator.pushReplacementNamed(context, AppRoutes.dashboard);
       } else {
-        final message = data['message'] ?? 'Login gagal';
+        final message =
+            data['message'] ?? 'Login gagal. Periksa email atau password.';
         ScaffoldMessenger.of(
           context,
         ).showSnackBar(SnackBar(content: Text('❌ $message')));
