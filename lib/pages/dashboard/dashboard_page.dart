@@ -6,6 +6,7 @@ import 'package:frontend_blockhain/pages/utils/helpers.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:frontend_blockhain/pages/services/blockchain_service.dart';
+import 'package:frontend_blockhain/pages/services/metamask_service.dart';
 
 class DashboardPage extends StatefulWidget {
   const DashboardPage({super.key});
@@ -19,7 +20,7 @@ class _DashboardPageState extends State<DashboardPage> {
   String email = "-";
   int userId = 0;
 
-  int saldo = 0;
+  double saldoEth = 0.0;
   int pemasukan = 0;
   int pengeluaran = 0;
 
@@ -43,6 +44,7 @@ class _DashboardPageState extends State<DashboardPage> {
     loadKeuanganData();
     fetchUMKMProfile();
     fetchHashHistory();
+    getMetaMaskBalance();
   }
 
   Future<void> loadUserData() async {
@@ -54,20 +56,28 @@ class _DashboardPageState extends State<DashboardPage> {
     });
   }
 
+  Future<void> getMetaMaskBalance() async {
+    try {
+      final balance = await MetaMaskService.getBalance();
+      setState(() {
+        saldoEth = balance;
+      });
+      print("✅ Saldo MetaMask: $balance ETH");
+    } catch (e) {
+      print("❌ Gagal ambil saldo MetaMask: $e");
+    }
+  }
+
   Future<void> loadKeuanganData() async {
     try {
       final data = await ApiService.getKeuanganData();
-      print("📦 Data keuangan diterima: $data");
-
       setState(() {
-        saldo = (double.tryParse(data['saldo'].toString()) ?? 0).toInt();
         pemasukan = (double.tryParse(data['pemasukan'].toString()) ?? 0)
             .toInt();
         pengeluaran = (double.tryParse(data['pengeluaran'].toString()) ?? 0)
             .toInt();
         isLoadingKeuangan = false;
       });
-
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text("✅ Data keuangan berhasil dimuat")),
       );
@@ -114,13 +124,6 @@ class _DashboardPageState extends State<DashboardPage> {
   Future<void> fetchHashHistory() async {
     try {
       final data = await _blockchainService.getHashHistory();
-      print("📦 Hash blockchain diterima (${data.length} data)");
-      for (var item in data) {
-        print(
-          "• [${item['jenis']}] ${item['deskripsi'] ?? '-'}: ${item['jumlah']}",
-        );
-      }
-
       setState(() {
         hashHistory = data;
         isLoadingHash = false;
@@ -298,17 +301,14 @@ class _DashboardPageState extends State<DashboardPage> {
           : Column(
               children: [
                 Text(
-                  formatRupiah(saldo),
+                  "${saldoEth.toStringAsFixed(4)} ETH",
                   style: const TextStyle(
                     fontSize: 24,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
                 const SizedBox(height: 8),
-                const Text(
-                  "Total Saldo Usaha Anda",
-                  style: TextStyle(color: Colors.grey),
-                ),
+                const Text("Total Saldo MetaMask"),
                 const SizedBox(height: 12),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceEvenly,

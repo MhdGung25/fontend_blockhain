@@ -1,8 +1,10 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:frontend_blockhain/pages/services/metamask_service.dart';
 import 'package:http/http.dart' as http;
 import 'package:frontend_blockhain/pages/routes/app_routes.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter_web3/flutter_web3.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -19,10 +21,14 @@ class _LoginPageState extends State<LoginPage> {
   bool obscurePassword = true;
   bool rememberMe = false;
 
+  String walletAddress = '';
+  double balanceEth = 0.0;
+
   @override
   void initState() {
     super.initState();
     loadSavedCredentials();
+    Future.delayed(Duration.zero, connectToMetaMask);
   }
 
   Future<void> loadSavedCredentials() async {
@@ -35,6 +41,34 @@ class _LoginPageState extends State<LoginPage> {
         emailController.text = savedEmail;
         passwordController.text = savedPassword;
         rememberMe = true;
+      });
+    }
+  }
+
+  Future<void> connectToMetaMask() async {
+    final isConnected = await MetaMaskService.connectWallet();
+    if (!mounted) return;
+
+    if (!isConnected) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("❌ MetaMask belum terkoneksi")),
+      );
+    } else {
+      setState(() {
+        walletAddress = ethereum!.selectedAddress!;
+      });
+      fetchBalance();
+      print("✅ MetaMask wallet terkoneksi: $walletAddress");
+    }
+  }
+
+  Future<void> fetchBalance() async {
+    if (ethereum != null && ethereum!.selectedAddress != null) {
+      final balanceBigInt = await provider!.getBalance(
+        ethereum!.selectedAddress!,
+      );
+      setState(() {
+        balanceEth = balanceBigInt / BigInt.from(10).pow(18);
       });
     }
   }
@@ -61,9 +95,7 @@ class _LoginPageState extends State<LoginPage> {
 
     try {
       final response = await http.post(
-        Uri.parse(
-          'http://127.0.0.1:8000/api/login',
-        ), // GANTI 127.0.0.1 JIKA DI EMULATOR
+        Uri.parse('http://127.0.0.1:8000/api/login'),
         headers: {'Accept': 'application/json'},
         body: {'email': email, 'password': password},
       );
@@ -77,6 +109,7 @@ class _LoginPageState extends State<LoginPage> {
         await prefs.setString('name', data['user']['name']);
         await prefs.setString('email', data['user']['email']);
         await prefs.setInt('user_id', data['user']['id']);
+        await prefs.setString('wallet_address', walletAddress);
 
         if (data['user'].containsKey('role')) {
           await prefs.setString('role', data['user']['role']);
@@ -129,6 +162,12 @@ class _LoginPageState extends State<LoginPage> {
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Image.asset("assets/illustration.png", width: 100),
+                const SizedBox(height: 24),
+                Text(
+                  "Wallet: ${walletAddress.isNotEmpty ? walletAddress : '-'}\nSaldo: ${balanceEth.toStringAsFixed(4)} ETH",
+                  style: const TextStyle(color: Colors.white),
+                  textAlign: TextAlign.center,
+                ),
                 const SizedBox(height: 24),
                 const Text(
                   "Mulai Pencatatan UMKM Anda",

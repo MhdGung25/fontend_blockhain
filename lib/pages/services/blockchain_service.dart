@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:frontend_blockhain/pages/services/metamask_service.dart';
 
 class BlockchainService {
   final String baseUrl = "http://127.0.0.1:8000/api";
@@ -14,13 +15,12 @@ class BlockchainService {
   /// Kirim hash transaksi ke Laravel backend
   Future<bool> sendHashToBackend({
     required String hash,
-    required String jenis, // 'pemasukan' atau 'pengeluaran'
+    required String jenis,
     required double jumlah,
     String? deskripsi,
   }) async {
     try {
       final token = await getToken();
-
       if (token == null) {
         print('🔒 Token tidak ditemukan. Harap login terlebih dahulu.');
         return false;
@@ -58,7 +58,6 @@ class BlockchainService {
   Future<List<Map<String, dynamic>>> getHashHistory() async {
     try {
       final token = await getToken();
-
       if (token == null) {
         throw Exception('Token tidak ditemukan. Harap login dahulu.');
       }
@@ -74,7 +73,6 @@ class BlockchainService {
       if (response.statusCode == 200) {
         final json = jsonDecode(response.body);
         final List<dynamic> data = json['data'];
-
         print('📦 Data diterima dari server: $data');
 
         return data.map((item) => item as Map<String, dynamic>).toList();
@@ -86,6 +84,25 @@ class BlockchainService {
     } catch (e) {
       print('❌ Error: $e');
       rethrow;
+    }
+  }
+
+  /// Ambil saldo langsung dari MetaMask yang sudah connect
+  Future<double> getBalance() async {
+    try {
+      final isConnected = await MetaMaskService.checkWalletConnection();
+      if (!isConnected) {
+        print("⚠️ MetaMask belum terkoneksi. Menghubungkan ulang...");
+        final connect = await MetaMaskService.connectWallet();
+        if (!connect) throw Exception("Gagal koneksi ke MetaMask.");
+      }
+
+      final balance = await MetaMaskService.getBalance();
+      print("💰 Saldo MetaMask: $balance ETH");
+      return balance;
+    } catch (e) {
+      print("❌ Error ambil saldo MetaMask: $e");
+      return 0.0;
     }
   }
 }

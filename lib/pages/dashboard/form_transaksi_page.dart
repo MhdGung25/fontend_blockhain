@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:frontend_blockhain/pages/routes/app_routes.dart';
+import 'package:frontend_blockhain/pages/services/metamask_service.dart';
 
 class FormTransaksiPage extends StatefulWidget {
   const FormTransaksiPage({super.key});
@@ -17,8 +18,25 @@ class _FormTransaksiPageState extends State<FormTransaksiPage> {
   final TextEditingController deskripsiController = TextEditingController();
   String jenis = 'pemasukan';
   bool isLoading = false;
+  double saldoMetaMask = 0;
 
   final Color primaryColor = const Color(0xFF0E2F56);
+
+  @override
+  void initState() {
+    super.initState();
+    getSaldoMetaMask();
+  }
+
+  Future<void> getSaldoMetaMask() async {
+    try {
+      final balance = await MetaMaskService.getBalance();
+      setState(() => saldoMetaMask = balance);
+    } catch (e) {
+      print("❌ Gagal ambil saldo MetaMask: $e");
+      setState(() => saldoMetaMask = 0);
+    }
+  }
 
   Future<void> simpanTransaksi() async {
     final prefs = await SharedPreferences.getInstance();
@@ -46,6 +64,7 @@ class _FormTransaksiPageState extends State<FormTransaksiPage> {
           'jenis': jenis,
           'jumlah': jumlahController.text,
           'deskripsi': deskripsiController.text,
+          'saldo_metamask': saldoMetaMask.toString(),
         },
       );
 
@@ -57,7 +76,6 @@ class _FormTransaksiPageState extends State<FormTransaksiPage> {
           const SnackBar(content: Text("✅ Transaksi berhasil disimpan")),
         );
 
-        /// 🔁 Reload halaman laporan dan history otomatis
         Future.delayed(const Duration(milliseconds: 500), () {
           Navigator.pushNamedAndRemoveUntil(
             context,
@@ -99,6 +117,14 @@ class _FormTransaksiPageState extends State<FormTransaksiPage> {
           key: _formKey,
           child: ListView(
             children: [
+              Text(
+                "Saldo MetaMask: $saldoMetaMask ETH",
+                style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 16),
               DropdownButtonFormField<String>(
                 value: jenis,
                 decoration: InputDecoration(

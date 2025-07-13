@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:frontend_blockhain/pages/services/api_service.dart';
+import 'package:frontend_blockhain/pages/services/metamask_service.dart';
 import 'package:frontend_blockhain/pages/utils/helpers.dart';
+import 'dart:async';
 
 class RiwayatTransaksiPage extends StatefulWidget {
   const RiwayatTransaksiPage({super.key});
@@ -13,16 +15,27 @@ class _RiwayatTransaksiPageState extends State<RiwayatTransaksiPage>
     with SingleTickerProviderStateMixin {
   late Future<List<Map<String, dynamic>>> _transaksiFuture;
   List<Map<String, dynamic>> _allTransaksi = [];
+  double saldoEth = 0;
 
   late TabController _tabController;
+  Timer? _refreshTimer;
 
   final Color primaryColor = const Color.fromARGB(255, 6, 71, 141);
 
   @override
   void initState() {
     super.initState();
-    _fetchData();
     _tabController = TabController(length: 2, vsync: this);
+    _startAutoRefresh();
+  }
+
+  void _startAutoRefresh() {
+    _fetchData();
+    _refreshBalance();
+    _refreshTimer = Timer.periodic(const Duration(seconds: 10), (_) {
+      _fetchData();
+      _refreshBalance();
+    });
   }
 
   void _fetchData() {
@@ -34,8 +47,26 @@ class _RiwayatTransaksiPageState extends State<RiwayatTransaksiPage>
     });
   }
 
+  Future<void> _refreshBalance() async {
+    try {
+      final balance = await MetaMaskService.getBalance();
+      setState(() {
+        saldoEth = balance;
+      });
+    } catch (e) {
+      print("❌ Gagal ambil saldo: $e");
+    }
+  }
+
   List<Map<String, dynamic>> _filterTransaksi(String jenis) {
     return _allTransaksi.where((item) => item['jenis'] == jenis).toList();
+  }
+
+  @override
+  void dispose() {
+    _refreshTimer?.cancel();
+    _tabController.dispose();
+    super.dispose();
   }
 
   @override
@@ -75,7 +106,6 @@ class _RiwayatTransaksiPageState extends State<RiwayatTransaksiPage>
             children: [
               const SizedBox(height: 10),
               _buildRingkasan(),
-
               Expanded(
                 child: TabBarView(
                   controller: _tabController,
@@ -169,6 +199,7 @@ class _RiwayatTransaksiPageState extends State<RiwayatTransaksiPage>
           _buildSummaryCard("Pemasukan", pemasukan, Colors.green),
           _buildSummaryCard("Pengeluaran", pengeluaran, Colors.red),
           _buildSummaryCard("Saldo", saldo, Colors.blue),
+          _buildSummaryCard("ETH", saldoEth.toInt(), Colors.orange),
         ],
       ),
     );
