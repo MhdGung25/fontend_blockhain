@@ -1,4 +1,23 @@
+import 'dart:convert';
 import 'package:flutter_web3/flutter_web3.dart';
+import 'package:http/http.dart' as http;
+
+Future<String?> requestLoginMessage(String walletAddress) async {
+  final response = await http.post(
+    Uri.parse("http://127.0.0.1:8000/api/auth/request-message"),
+    headers: {'Content-Type': 'application/json'},
+    body: jsonEncode({"address": walletAddress}),
+  );
+
+  if (response.statusCode == 200) {
+    final data = jsonDecode(response.body);
+    print("✅ Message dari server: ${data['message']}");
+    return data['message'];
+  } else {
+    print("❌ Gagal request message: ${response.body}");
+    return null;
+  }
+}
 
 class MetaMaskService {
   static Future<bool> checkWalletConnection() async {
