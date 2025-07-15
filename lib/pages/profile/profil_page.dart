@@ -1,7 +1,6 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:frontend_blockhain/pages/routes/app_routes.dart';
-import 'package:frontend_blockhain/pages/utils/constants.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -20,6 +19,7 @@ class _ProfilPageState extends State<ProfilPage> {
 
   bool isLoading = false;
   bool isProfilFilled = false;
+  bool isEditing = false;
 
   @override
   void initState() {
@@ -42,20 +42,22 @@ class _ProfilPageState extends State<ProfilPage> {
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body)['data'];
-        setState(() {
-          namaController.text = data['nama_usaha'] ?? '';
-          jenisUsahaController.text = data['jenis_usaha'] ?? '';
-          tahunController.text = data['tahun_berdiri'] ?? '';
-          alamatController.text = data['alamat'] ?? '';
-          isProfilFilled = true;
-        });
+        if (data != null) {
+          setState(() {
+            namaController.text = data['nama_usaha'] ?? '';
+            jenisUsahaController.text = data['jenis_usaha'] ?? '';
+            tahunController.text = data['tahun_berdiri'] ?? '';
+            alamatController.text = data['alamat'] ?? '';
+            isProfilFilled = true;
+          });
+        }
       }
     } catch (e) {
       print("❌ Gagal mengambil data profil: $e");
     }
   }
 
-  Future<void> handleNext() async {
+  Future<void> handleSave() async {
     final namaUsaha = namaController.text.trim();
     final jenisUsaha = jenisUsahaController.text.trim();
     final tahun = tahunController.text.trim();
@@ -100,11 +102,13 @@ class _ProfilPageState extends State<ProfilPage> {
       final result = jsonDecode(response.body);
 
       if (response.statusCode == 201) {
-        print("✅ Profil disimpan: ${result['data']}");
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text("✅ Profil berhasil disimpan")),
         );
-        Navigator.pushReplacementNamed(context, AppRoutes.dashboard);
+        setState(() {
+          isProfilFilled = true;
+          isEditing = false;
+        });
       } else {
         throw Exception(result['message'] ?? 'Gagal menyimpan profil');
       }
@@ -120,6 +124,8 @@ class _ProfilPageState extends State<ProfilPage> {
 
   @override
   Widget build(BuildContext context) {
+    final isReadOnly = isProfilFilled && !isEditing;
+
     return Scaffold(
       backgroundColor: const Color(0xFF0E2F56),
       appBar: AppBar(
@@ -130,6 +136,20 @@ class _ProfilPageState extends State<ProfilPage> {
           onPressed: () =>
               Navigator.pushReplacementNamed(context, AppRoutes.dashboard),
         ),
+        actions: [
+          if (isProfilFilled)
+            IconButton(
+              icon: Icon(
+                isEditing ? Icons.close : Icons.edit,
+                color: Colors.white,
+              ),
+              onPressed: () {
+                setState(() {
+                  isEditing = !isEditing;
+                });
+              },
+            ),
+        ],
         title: const Text("Profil UMKM", style: TextStyle(color: Colors.white)),
       ),
       body: SafeArea(
@@ -153,27 +173,27 @@ class _ProfilPageState extends State<ProfilPage> {
                     _buildTextField(
                       namaController,
                       "Nama Usaha",
-                      readOnly: isProfilFilled,
+                      readOnly: isReadOnly,
                     ),
                     const SizedBox(height: 16),
                     _buildTextField(
                       jenisUsahaController,
                       "Jenis Usaha",
-                      readOnly: isProfilFilled,
+                      readOnly: isReadOnly,
                     ),
                     const SizedBox(height: 16),
                     _buildTextField(
                       tahunController,
                       "Tahun Berdiri",
                       keyboardType: TextInputType.number,
-                      readOnly: isProfilFilled,
+                      readOnly: isReadOnly,
                     ),
                     const SizedBox(height: 16),
                     _buildTextField(
                       alamatController,
                       "Alamat Usaha",
                       maxLines: 3,
-                      readOnly: isProfilFilled,
+                      readOnly: isReadOnly,
                     ),
                   ],
                 ),
@@ -183,14 +203,24 @@ class _ProfilPageState extends State<ProfilPage> {
                   ? const Center(
                       child: CircularProgressIndicator(color: Colors.orange),
                     )
-                  : isProfilFilled
-                  ? const Center(
-                      child: Text(
-                        "✅ Profil sudah terisi",
-                        style: TextStyle(color: Colors.white),
+                  : ElevatedButton.icon(
+                      onPressed: isProfilFilled && !isEditing
+                          ? null
+                          : handleSave,
+                      icon: Icon(
+                        isProfilFilled ? Icons.save : Icons.arrow_forward,
                       ),
-                    )
-                  : CustomButton(text: "Selanjutnya", onPressed: handleNext),
+                      label: Text(
+                        isProfilFilled ? "Simpan Perubahan" : "Simpan Profil",
+                      ),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.orange,
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                    ),
             ],
           ),
         ),

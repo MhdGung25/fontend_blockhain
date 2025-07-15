@@ -1,9 +1,11 @@
+// LaporanKeuanganPage dengan tombol tambah dan update otomatis
+
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:frontend_blockhain/pages/utils/helpers.dart';
 import 'package:fl_chart/fl_chart.dart';
+import 'package:frontend_blockhain/pages/utils/helpers.dart';
 
 class LaporanKeuanganPage extends StatefulWidget {
   const LaporanKeuanganPage({super.key});
@@ -16,7 +18,6 @@ class _LaporanKeuanganPageState extends State<LaporanKeuanganPage> {
   int pemasukan = 0;
   int pengeluaran = 0;
   bool isLoading = true;
-
   List<Map<String, dynamic>> history = [];
 
   @override
@@ -30,9 +31,7 @@ class _LaporanKeuanganPageState extends State<LaporanKeuanganPage> {
       final prefs = await SharedPreferences.getInstance();
       final token = prefs.getString('token');
 
-      if (token == null) {
-        throw Exception("Token tidak ditemukan.");
-      }
+      if (token == null) throw Exception("Token tidak ditemukan.");
 
       final response = await http.get(
         Uri.parse('http://127.0.0.1:8000/api/keuangan'),
@@ -42,9 +41,8 @@ class _LaporanKeuanganPageState extends State<LaporanKeuanganPage> {
         },
       );
 
-      if (response.statusCode != 200) {
+      if (response.statusCode != 200)
         throw Exception("Status: ${response.statusCode}");
-      }
 
       final data = jsonDecode(response.body);
 
@@ -63,6 +61,91 @@ class _LaporanKeuanganPageState extends State<LaporanKeuanganPage> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text("Gagal memuat data keuangan")),
       );
+    }
+  }
+
+  Future<void> tambahCatatan() async {
+    String? jenis;
+    final jumlahController = TextEditingController();
+
+    await showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text("Tambah Catatan"),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            DropdownButtonFormField<String>(
+              value: jenis,
+              items: const [
+                DropdownMenuItem(value: 'pemasukan', child: Text('Pemasukan')),
+                DropdownMenuItem(
+                  value: 'pengeluaran',
+                  child: Text('Pengeluaran'),
+                ),
+              ],
+              onChanged: (value) => jenis = value,
+              decoration: const InputDecoration(labelText: "Jenis"),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: jumlahController,
+              keyboardType: TextInputType.number,
+              decoration: const InputDecoration(labelText: "Jumlah"),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text("Batal"),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              if (jenis == null || jumlahController.text.isEmpty) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text("Mohon isi semua data")),
+                );
+                return;
+              }
+              Navigator.pop(context);
+              await submitCatatan(jenis!, jumlahController.text);
+            },
+            child: const Text("Simpan"),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> submitCatatan(String jenis, String jumlah) async {
+    setState(() => isLoading = true);
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('token');
+
+      final response = await http.post(
+        Uri.parse('http://127.0.0.1:8000/api/keuangan'),
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Accept': 'application/json',
+        },
+        body: {'jenis': jenis, 'jumlah': jumlah},
+      );
+
+      if (response.statusCode == 201) {
+        await fetchLaporanKeuangan();
+      } else {
+        final result = jsonDecode(response.body);
+        throw Exception(result['message'] ?? 'Gagal tambah catatan');
+      }
+    } catch (e) {
+      print("❌ Gagal tambah catatan: $e");
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text("Gagal tambah catatan: $e")));
+    } finally {
+      setState(() => isLoading = false);
     }
   }
 

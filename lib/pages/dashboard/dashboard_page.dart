@@ -6,7 +6,6 @@ import 'package:frontend_blockhain/pages/utils/helpers.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:frontend_blockhain/pages/services/blockchain_service.dart';
-import 'package:frontend_blockhain/pages/services/metamask_service.dart';
 
 class DashboardPage extends StatefulWidget {
   const DashboardPage({super.key});
@@ -20,9 +19,9 @@ class _DashboardPageState extends State<DashboardPage> {
   String email = "-";
   int userId = 0;
 
-  double saldoEth = 0.0;
   int pemasukan = 0;
   int pengeluaran = 0;
+  int saldo = 0;
 
   String namaUsaha = "-";
   String jenisUsaha = "-";
@@ -44,7 +43,6 @@ class _DashboardPageState extends State<DashboardPage> {
     loadKeuanganData();
     fetchUMKMProfile();
     fetchHashHistory();
-    getMetaMaskBalance();
   }
 
   Future<void> loadUserData() async {
@@ -56,18 +54,6 @@ class _DashboardPageState extends State<DashboardPage> {
     });
   }
 
-  Future<void> getMetaMaskBalance() async {
-    try {
-      final balance = await MetaMaskService.getBalance();
-      setState(() {
-        saldoEth = balance;
-      });
-      print("✅ Saldo MetaMask: $balance ETH");
-    } catch (e) {
-      print("❌ Gagal ambil saldo MetaMask: $e");
-    }
-  }
-
   Future<void> loadKeuanganData() async {
     try {
       final data = await ApiService.getKeuanganData();
@@ -76,17 +62,12 @@ class _DashboardPageState extends State<DashboardPage> {
             .toInt();
         pengeluaran = (double.tryParse(data['pengeluaran'].toString()) ?? 0)
             .toInt();
+        saldo = pemasukan - pengeluaran;
         isLoadingKeuangan = false;
       });
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("✅ Data keuangan berhasil dimuat")),
-      );
     } catch (e) {
       setState(() => isLoadingKeuangan = false);
       print('❌ Gagal load keuangan: $e');
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('❌ Gagal memuat data keuangan')),
-      );
     }
   }
 
@@ -158,6 +139,11 @@ class _DashboardPageState extends State<DashboardPage> {
       await prefs.clear();
       Navigator.pushNamedAndRemoveUntil(context, AppRoutes.login, (_) => false);
     }
+  }
+
+  void refreshAllData() {
+    loadKeuanganData();
+    fetchHashHistory();
   }
 
   @override
@@ -260,31 +246,6 @@ class _DashboardPageState extends State<DashboardPage> {
     );
   }
 
-  Widget _buildProfilUMKMCard() {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.blue.shade50,
-        border: Border.all(color: Colors.blue.shade100),
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            "Profil UMKM",
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-          ),
-          const SizedBox(height: 8),
-          Text("Nama Usaha: $namaUsaha"),
-          Text("Jenis Usaha: $jenisUsaha"),
-          Text("Tahun Berdiri: $tahunBerdiri"),
-          Text("Alamat: $alamatUsaha"),
-        ],
-      ),
-    );
-  }
-
   Widget _buildKeuanganCard() {
     return Container(
       padding: const EdgeInsets.all(16),
@@ -301,14 +262,14 @@ class _DashboardPageState extends State<DashboardPage> {
           : Column(
               children: [
                 Text(
-                  "${saldoEth.toStringAsFixed(4)} ETH",
+                  formatRupiah(saldo),
                   style: const TextStyle(
                     fontSize: 24,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
                 const SizedBox(height: 8),
-                const Text("Total Saldo MetaMask"),
+                const Text("Total Saldo"),
                 const SizedBox(height: 12),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceEvenly,
@@ -374,6 +335,31 @@ class _DashboardPageState extends State<DashboardPage> {
     );
   }
 
+  Widget _buildProfilUMKMCard() {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.blue.shade50,
+        border: Border.all(color: Colors.blue.shade100),
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            "Profil UMKM",
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 8),
+          Text("Nama Usaha: $namaUsaha"),
+          Text("Jenis Usaha: $jenisUsaha"),
+          Text("Tahun Berdiri: $tahunBerdiri"),
+          Text("Alamat: $alamatUsaha"),
+        ],
+      ),
+    );
+  }
+
   Widget _menuItem(
     BuildContext context,
     IconData icon,
@@ -389,7 +375,14 @@ class _DashboardPageState extends State<DashboardPage> {
           ),
           child: IconButton(
             icon: Icon(icon, size: 28, color: Colors.white),
-            onPressed: () => Navigator.pushNamed(context, route),
+            onPressed: () async {
+              if (route == AppRoutes.formTransaksi) {
+                await Navigator.pushNamed(context, route);
+                refreshAllData();
+              } else {
+                Navigator.pushNamed(context, route);
+              }
+            },
           ),
         ),
         const SizedBox(height: 4),
